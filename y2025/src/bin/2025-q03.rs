@@ -24,26 +24,16 @@ fn parse(inp: &str) -> Vec<i32> {
 
 fn p1(mut inp: Vec<i32>, upto: usize) -> i32 {
     inp.sort();
-    inp.into_iter()
-        .coalesce(|l, r| if l == r { Ok(l) } else { Err((l, r)) })
-        .take(upto)
-        .sum()
+    inp.into_iter().dedup().take(upto).sum()
 }
 
-fn p3(mut inp: Vec<i32>) -> i32 {
+fn p3(mut inp: Vec<i32>) -> usize {
     inp.sort();
     inp.into_iter()
-        .map(|i| (i, 1))
-        .coalesce(|l, r| {
-            if l.0 == r.0 {
-                Ok((l.0, l.1 + 1))
-            } else {
-                Err((l, r))
-            }
-        })
-        .max_by_key(|(_, cnt)| *cnt)
+        .dedup_with_count()
+        .max_by_key(|(cnt, _)| *cnt)
         .expect("List cannot be empty.")
-        .1
+        .0
 }
 
 fn main() -> io::Result<()> {
