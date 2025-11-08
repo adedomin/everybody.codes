@@ -19,19 +19,17 @@ pub fn read_input_as_str() -> io::Result<String> {
 
 type Num = f64;
 
-enum Gear {
-    Single(Num),
-    Double(Num, Num),
-}
+struct Gear(Num, Num);
 
 impl FromStr for Gear {
     type Err = <Num as FromStr>::Err;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some((out, inner)) = s.split_once('|') {
-            Ok(Gear::Double(out.parse::<Num>()?, inner.parse::<Num>()?))
+            Ok(Gear(out.parse::<Num>()?, inner.parse::<Num>()?))
         } else {
-            Ok(Gear::Single(s.parse::<Num>()?))
+            let out = s.parse::<Num>()?;
+            Ok(Gear(out, out))
         }
     }
 }
@@ -46,12 +44,7 @@ fn get_ratio(gears: &[Gear]) -> Num {
     gears
         .iter()
         .tuple_windows()
-        .map(|(x, y)| match (x, y) {
-            (Gear::Single(x), Gear::Single(y)) => x / y,
-            (Gear::Single(x), Gear::Double(y, _)) => x / y,
-            (Gear::Double(_, x), Gear::Single(y)) => x / y,
-            (Gear::Double(_, x), Gear::Double(y, _)) => x / y,
-        })
+        .map(|(x, y)| x.1 / y.0)
         .product::<Num>()
 }
 
