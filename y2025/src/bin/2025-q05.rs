@@ -4,8 +4,6 @@ use std::{
     str::FromStr,
 };
 
-use itertools::{Itertools, MinMaxResult};
-
 pub fn read_input_as_str() -> io::Result<String> {
     match env::args().nth(1) {
         Some(arg) => fs::read_to_string(arg),
@@ -19,12 +17,17 @@ pub fn read_input_as_str() -> io::Result<String> {
 
 type Int = i64;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 enum Bone {
     Start(Int),
     Left(Int, Int),
     Right(Int, Int),
     Full(Int, Int, Int),
+}
+
+fn fold_concat(s: &[Int]) -> Int {
+    s.iter()
+        .fold(0, |acc, i| acc * (10 as Int).pow(i.ilog10() + 1) + i)
 }
 
 impl Bone {
@@ -50,11 +53,17 @@ impl Bone {
     fn level(&self) -> Int {
         match self {
             Bone::Start(v) => *v,
-            Bone::Left(v1, v2) | Bone::Right(v1, v2) => v1 * (10 as Int).pow(v2.ilog10() + 1) + v2,
-            Bone::Full(v1, v2, v3) => {
-                v1 * (10 as Int).pow(v2.ilog2() + 1) + v2 * (10 as Int).pow(v3.ilog10() + 1) + v3
-            }
+            Bone::Left(v1, v2) | Bone::Right(v1, v2) => fold_concat(&[*v1, *v2]),
+            Bone::Full(v1, v2, v3) => fold_concat(&[*v1, *v2, *v3]),
         }
+    }
+}
+
+impl Eq for Bone {}
+
+impl PartialEq for Bone {
+    fn eq(&self, other: &Self) -> bool {
+        self.level() == other.level()
     }
 }
 
@@ -106,9 +115,16 @@ impl PartialOrd for Sword {
 
 impl Ord for Sword {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        match self.quality().cmp(&other.quality()) {
+        // 1. check overal quality, higher is greater.
+        let bones = match self.quality().cmp(&other.quality()) {
+            // 2. check level numbers per spine, see `Bone`
             std::cmp::Ordering::Equal => self.1.cmp(&other.1),
-            cmp => cmp,
+            cmp => return cmp,
+        };
+        match bones {
+            // 3. if still equal, higher ID is greater
+            std::cmp::Ordering::Equal => self.0.cmp(&other.0),
+            _ => bones,
         }
     }
 }
@@ -157,13 +173,8 @@ fn main() -> io::Result<()> {
     let inp = inp.trim();
     let mut swords = parse(inp);
     let part1 = swords[0].quality();
-    let part2 =
-        if let MinMaxResult::MinMax(x, y) = swords.iter().map(|sword| sword.quality()).minmax() {
-            y - x
-        } else {
-            0
-        };
-    swords.sort();
+    swords.sort_unstable();
+    let part2 = swords.last().unwrap().quality() - swords.first().unwrap().quality();
     let part3 = swords
         .iter()
         .rev()
