@@ -28,15 +28,14 @@ enum Bone {
 }
 
 impl Bone {
-    fn mut_next(&mut self, i: Int) -> bool {
-        *self = match self {
+    fn next(&self, i: Int) -> Option<Bone> {
+        Some(match self {
             Bone::Start(o) if i < *o => Bone::Left(i, *o),
             Bone::Start(o) if *o < i => Bone::Right(*o, i),
             Bone::Left(ol, o) if *o < i => Bone::Full(*ol, *o, i),
             Bone::Right(o, or) if i < *o => Bone::Full(i, *o, *or),
-            _ => return false,
-        };
-        true
+            _ => return None,
+        })
     }
 
     fn spine(&self) -> Int {
@@ -135,10 +134,10 @@ impl FromStr for Sword {
         let mut fishbone = vec![Bone::Start(first)];
         for n in num_list {
             let n = n?;
-            // try each bone before inserting new.
-            if let Some(()) = fishbone
+            if fishbone
                 .iter_mut()
-                .try_for_each(|b| (!b.mut_next(n)).then_some(()))
+                .find_map(|bone| Some(*bone = bone.next(n)?))
+                .is_none()
             {
                 fishbone.push(Bone::Start(n));
             }
