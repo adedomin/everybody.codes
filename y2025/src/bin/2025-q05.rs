@@ -28,14 +28,15 @@ enum Bone {
 }
 
 impl Bone {
-    fn next(&self, i: Int) -> Option<Bone> {
-        match self {
-            Bone::Start(o) if i < *o => Some(Bone::Left(i, *o)),
-            Bone::Start(o) if *o < i => Some(Bone::Right(*o, i)),
-            Bone::Left(ol, o) if *o < i => Some(Bone::Full(*ol, *o, i)),
-            Bone::Right(o, or) if i < *o => Some(Bone::Full(i, *o, *or)),
-            _ => None,
-        }
+    fn mut_next(&mut self, i: Int) -> bool {
+        *self = match self {
+            Bone::Start(o) if i < *o => Bone::Left(i, *o),
+            Bone::Start(o) if *o < i => Bone::Right(*o, i),
+            Bone::Left(ol, o) if *o < i => Bone::Full(*ol, *o, i),
+            Bone::Right(o, or) if i < *o => Bone::Full(i, *o, *or),
+            _ => return false,
+        };
+        true
     }
 
     fn spine(&self) -> Int {
@@ -113,25 +114,32 @@ impl Ord for Sword {
     }
 }
 
+#[derive(Debug)]
+enum SwordParseErr {
+    InvalidNum,
+    NoId,
+    NoSpine,
+}
+
 impl FromStr for Sword {
-    type Err = ();
+    type Err = SwordParseErr;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (id, list) = s.split_once(':').ok_or(())?;
-        let id = id.parse::<Int>().map_err(|_| ())?;
-        let mut list_itr = list.split(',');
-        let first = list_itr.next().ok_or(())?.parse::<Int>().map_err(|_| ())?;
+        use SwordParseErr as E;
+        let mut num_list = s
+            .split([':', ','])
+            .map(|n| n.parse::<Int>().map_err(|_| E::InvalidNum));
+
+        let id = num_list.next().ok_or(E::NoId)??;
+        let first = num_list.next().ok_or(E::NoSpine)??;
         let mut fishbone = vec![Bone::Start(first)];
-        for n in list_itr {
-            let n = n.parse::<Int>().map_err(|_| ())?;
-            if let Ok(()) = fishbone.iter_mut().try_for_each(|b| {
-                if let Some(nb) = b.next(n) {
-                    *b = nb;
-                    Err(())
-                } else {
-                    Ok(())
-                }
-            }) {
+        for n in num_list {
+            let n = n?;
+            // try each bone before inserting new.
+            if let Some(()) = fishbone
+                .iter_mut()
+                .try_for_each(|b| (!b.mut_next(n)).then_some(()))
+            {
                 fishbone.push(Bone::Start(n));
             }
         }
@@ -141,7 +149,7 @@ impl FromStr for Sword {
 
 fn parse(inp: &str) -> Vec<Sword> {
     inp.split('\n')
-        .map(|line| line.parse::<Sword>().expect("Valid sword."))
+        .map(|line| line.parse::<Sword>().expect("Invalid sword"))
         .collect::<Vec<_>>()
 }
 
