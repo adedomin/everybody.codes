@@ -25,9 +25,8 @@ enum Bone {
     Full(Int, Int, Int),
 }
 
-fn fold_concat(s: &[Int]) -> Int {
-    s.iter()
-        .fold(0, |acc, i| acc * (10 as Int).pow(i.ilog10() + 1) + i)
+fn fold_concat<I: Iterator<Item = Int>>(s: I) -> Int {
+    s.fold(0, |acc, i| acc * (10 as Int).pow(i.ilog10() + 1) + i)
 }
 
 impl Bone {
@@ -53,8 +52,8 @@ impl Bone {
     fn level(&self) -> Int {
         match self {
             Bone::Start(v) => *v,
-            Bone::Left(v1, v2) | Bone::Right(v1, v2) => fold_concat(&[*v1, *v2]),
-            Bone::Full(v1, v2, v3) => fold_concat(&[*v1, *v2, *v3]),
+            Bone::Left(v1, v2) | Bone::Right(v1, v2) => fold_concat([*v1, *v2].into_iter()),
+            Bone::Full(v1, v2, v3) => fold_concat([*v1, *v2, *v3].into_iter()),
         }
     }
 }
@@ -83,9 +82,7 @@ struct Sword(Int, Vec<Bone>);
 
 impl Sword {
     fn quality(&self) -> Int {
-        self.1.iter().map(|bone| bone.spine()).fold(0, |acc, bone| {
-            acc * (10 as Int).pow(bone.ilog10() + 1) + bone
-        })
+        fold_concat(self.1.iter().map(|bone| bone.spine()))
     }
 
     fn checksum(&self, idx: usize) -> Int {
